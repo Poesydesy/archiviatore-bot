@@ -7,7 +7,6 @@ from telegram.ext import (
     MessageHandler,
     ContextTypes,
     filters,
-    Dispatcher,
 )
 
 TOKEN = os.getenv("TOKEN")
@@ -15,6 +14,7 @@ ARCHIVE_TOPIC_ID = 111
 
 messages_to_archive = {}
 
+# Gestione dei messaggi ricevuti
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.reply_to_message:
         if update.message.text.lower() == "archivia subito":
@@ -43,6 +43,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
             print(f"🕒 Messaggio programmato per archiviazione: {msg_id}")
 
+# Controllo ogni 10 secondi per archiviazione ritardata
 async def archive_checker(bot: Bot):
     while True:
         now = time.time()
@@ -76,6 +77,7 @@ async def archive_checker(bot: Bot):
                     del messages_to_archive[msg_id]
         await asyncio.sleep(10)
 
+# Avvio del bot
 async def main():
     bot = Bot(token=TOKEN)
     app = Application(bot=bot)
