@@ -3,7 +3,7 @@ import os
 import asyncio
 from telegram import Update
 from telegram.ext import (
-    Application,
+    ApplicationBuilder,
     MessageHandler,
     ContextTypes,
     filters,
@@ -42,7 +42,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
             print(f"🕒 Messaggio programmato per archiviazione: {msg_id}")
 
-async def archive_checker(application: Application):
+async def archive_checker(application):
     while True:
         now = time.time()
         bot = application.bot
@@ -77,7 +77,7 @@ async def archive_checker(application: Application):
         await asyncio.sleep(10)
 
 async def main():
-    app = Application(token=TOKEN)
+    app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
     await app.initialize()
     asyncio.create_task(archive_checker(app))
