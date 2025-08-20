@@ -1,4 +1,6 @@
 import time
+import os
+import asyncio
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -6,19 +8,12 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from apscheduler.schedulers.background import BackgroundScheduler
 
-# Inserisci qui il tuo token Telegram
-import os
 TOKEN = os.getenv("TOKEN")
+ARCHIVE_TOPIC_ID = 123456  # ← Sostituisci con il tuo topic ID
 
-# ID del topic dove archiviare i messaggi
-ARCHIVE_TOPIC_ID = 123456  # ← Sostituisci con l’ID del tuo topic "Archivio"
-
-# Dizionario per tenere traccia dei messaggi da archiviare
 messages_to_archive = {}
 
-# Gestione dei messaggi ricevuti
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.reply_to_message:
         if update.message.text.lower() == "archivia subito":
@@ -47,51 +42,49 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
             print(f"🕒 Messaggio programmato per archiviazione: {msg_id}")
 
-# Controllo ogni 10 secondi
-async def archive_checker(context: ContextTypes.DEFAULT_TYPE):
-    now = time.time()
-    bot = context.bot
-    for msg_id in list(messages_to_archive):
-        data = messages_to_archive[msg_id]
-        if now - data['timestamp'] >= 60:
-            try:
-                await bot.copy_message(
-                    chat_id=data['chat_id'],
-                    from_chat_id=data['chat_id'],
-                    message_id=data['message_id'],
-                    message_thread_id=ARCHIVE_TOPIC_ID
-                )
-                print(f"✅ Messaggio copiato dopo 1 minuto: {msg_id}")
+async def archive_checker(application: Application):
+    while True:
+        now = time.time()
+        bot = application.bot
+        for msg_id in list(messages_to_archive):
+            data = messages_to_archive[msg_id]
+            if now - data['timestamp'] >= 60:
                 try:
-                    await bot.delete_message(
+                    await bot.copy_message(
                         chat_id=data['chat_id'],
-                        message_id=data['message_id']
-                    )
-                    print(f"✅ Messaggio originale cancellato dopo 1 minuto: {msg_id}")
-                except Exception as e:
-                    print(f"⚠️ Messaggio troppo vecchio, non cancellabile: {msg_id}")
-                    await bot.send_message(
-                        chat_id=data['chat_id'],
-                        text="⚠️ Il messaggio non è stato cancellato perché ha più di 48 ore.",
+                        from_chat_id=data['chat_id'],
+                        message_id=data['message_id'],
                         message_thread_id=ARCHIVE_TOPIC_ID
                     )
-                del messages_to_archive[msg_id]
-            except Exception as e:
-                print(f"⚠️ Errore durante archiviazione ritardata: {e}")
-                del messages_to_archive[msg_id]
-
-# Avvio bot compatibile con Render
-import asyncio
+                    print(f"✅ Messaggio copiato dopo 1 minuto: {msg_id}")
+                    try:
+                        await bot.delete_message(
+                            chat_id=data['chat_id'],
+                            message_id=data['message_id']
+                        )
+                        print(f"✅ Messaggio originale cancellato dopo 1 minuto: {msg_id}")
+                    except Exception as e:
+                        print(f"⚠️ Messaggio troppo vecchio, non cancellabile: {msg_id}")
+                        await bot.send_message(
+                            chat_id=data['chat_id'],
+                            text="⚠️ Il messaggio non è stato cancellato perché ha più di 48 ore.",
+                            message_thread_id=ARCHIVE_TOPIC_ID
+                        )
+                    del messages_to_archive[msg_id]
+                except Exception as e:
+                    print(f"⚠️ Errore durante archiviazione ritardata: {e}")
+                    del messages_to_archive[msg_id]
+        await asyncio.sleep(10)
 
 async def main():
     app = Application.builder().token(TOKEN).build()
-
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
-
     await app.initialize()
-    app.job_queue.run_repeating(archive_checker, interval=10)
+    asyncio.create_task(archive_checker(app))
     await app.start()
+    print("🚀 Bot avviato e in ascolto...")
     await app.updater.start_polling()
     await app.updater.idle()
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
