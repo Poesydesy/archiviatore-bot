@@ -62,4 +62,29 @@ async def archive_checker(application: Application):
                             chat_id=data['chat_id'],
                             message_id=data['message_id']
                         )
-                        print(f"✅ Messaggio originale cancellato dopo 1 minuto
+                        print(f"✅ Messaggio originale cancellato dopo 1 minuto: {msg_id}")
+                    except Exception as e:
+                        print(f"⚠️ Messaggio troppo vecchio, non cancellabile: {msg_id}")
+                        await bot.send_message(
+                            chat_id=data['chat_id'],
+                            text="⚠️ Il messaggio non è stato cancellato perché ha più di 48 ore.",
+                            message_thread_id=ARCHIVE_TOPIC_ID
+                        )
+                    del messages_to_archive[msg_id]
+                except Exception as e:
+                    print(f"⚠️ Errore durante archiviazione ritardata: {e}")
+                    del messages_to_archive[msg_id]
+        await asyncio.sleep(10)
+
+async def main():
+    app = Application.builder().token(TOKEN).post_init(None).build()
+    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
+    await app.initialize()
+    asyncio.create_task(archive_checker(app))
+    await app.start()
+    print("🤖 Bot avviato e in ascolto...")
+    await app.updater.start_polling()
+    await app.updater.idle()
+
+if __name__ == "__main__":
+    asyncio.run(main())
