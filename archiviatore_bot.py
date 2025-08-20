@@ -1,12 +1,13 @@
 import time
 import os
 import asyncio
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import (
-    ApplicationBuilder,
+    Application,
     MessageHandler,
     ContextTypes,
     filters,
+    Dispatcher,
 )
 
 TOKEN = os.getenv("TOKEN")
@@ -42,10 +43,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
             print(f"🕒 Messaggio programmato per archiviazione: {msg_id}")
 
-async def archive_checker(application):
+async def archive_checker(bot: Bot):
     while True:
         now = time.time()
-        bot = application.bot
         for msg_id in list(messages_to_archive):
             data = messages_to_archive[msg_id]
             if now - data['timestamp'] >= 60:
@@ -77,10 +77,11 @@ async def archive_checker(application):
         await asyncio.sleep(10)
 
 async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    bot = Bot(token=TOKEN)
+    app = Application(bot=bot)
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
     await app.initialize()
-    asyncio.create_task(archive_checker(app))
+    asyncio.create_task(archive_checker(bot))
     await app.start()
     print("🤖 Bot avviato e in ascolto...")
     await app.updater.start_polling()
