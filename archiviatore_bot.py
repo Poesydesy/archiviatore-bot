@@ -80,9 +80,9 @@ async def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
     await app.initialize()
-    asyncio.create_task(archive_checker(app))
+    asyncio.create_task(archive_checker(app))  # ← loop manuale, niente job_queue
     await app.start()
-    print("🚀 Bot avviato e in ascolto...")
+    print("🤖 Bot avviato e in ascolto...")
     await app.updater.start_polling()
     await app.updater.idle()
 
