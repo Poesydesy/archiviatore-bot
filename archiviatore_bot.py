@@ -1,9 +1,9 @@
 import time
 import os
 import asyncio
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import (
-    Application,
+    ApplicationBuilder,
     MessageHandler,
     ContextTypes,
     filters,
@@ -14,7 +14,6 @@ ARCHIVE_TOPIC_ID = 111
 
 messages_to_archive = {}
 
-# Gestione dei messaggi ricevuti
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.reply_to_message:
         if update.message.text.lower() == "archivia subito":
@@ -43,10 +42,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
             print(f"🕒 Messaggio programmato per archiviazione: {msg_id}")
 
-# Controllo ogni 10 secondi per archiviazione ritardata
-async def archive_checker(bot: Bot):
+async def archive_checker(application):
     while True:
         now = time.time()
+        bot = application.bot
         for msg_id in list(messages_to_archive):
             data = messages_to_archive[msg_id]
             if now - data['timestamp'] >= 60:
@@ -77,13 +76,11 @@ async def archive_checker(bot: Bot):
                     del messages_to_archive[msg_id]
         await asyncio.sleep(10)
 
-# Avvio del bot
 async def main():
-    bot = Bot(token=TOKEN)
-    app = Application(bot=bot)
+    app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
     await app.initialize()
-    asyncio.create_task(archive_checker(bot))
+    asyncio.create_task(archive_checker(app))
     await app.start()
     print("🤖 Bot avviato e in ascolto...")
     await app.updater.start_polling()
