@@ -1,1 +1,8 @@
-render.yaml
+services:
+  - type: web
+    name: archiviatore-bot
+    env: python
+    buildCommand: ""
+    startCommand: ./start.sh
+    plan: free
+    autoDeploy: true
