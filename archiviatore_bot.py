@@ -77,7 +77,7 @@ async def archive_checker(application: Application):
         await asyncio.sleep(10)
 
 async def main():
-    app = Application.builder().token(TOKEN).post_init(None).build()
+    app = Application(token=TOKEN)
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_message))
     await app.initialize()
     asyncio.create_task(archive_checker(app))
